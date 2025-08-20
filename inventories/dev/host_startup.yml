@@ -4,7 +4,7 @@ all:
       hosts:
         local-dev:
           ansible_host: 192.168.164.128
-          ansible_user: femi  # Default Ubuntu user
+          ansible_user: femi 
           ansible_become: true
           ansible_become_method: sudo
           ansible_ssh_pass: "{{ lookup('env', 'SSH_PASSWORD') }}"
