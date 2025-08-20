@@ -1,3 +1,5 @@
+update_cache: true
+
 common_packages:
   - vim
   - curl
@@ -9,6 +11,3 @@ common_packages:
   - tmux
   - dnf-automatic
   - unattended-upgrades
-
-ntp_package: chrony
-ntp_service: chronyd

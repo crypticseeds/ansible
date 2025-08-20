@@ -5,15 +5,6 @@
   tags: 
     - always
     - base
-  
-  pre_tasks:
-    - name: Ensure Python is available (RHEL minimal)
-      ansible.builtin.raw: test -e /usr/bin/python3 || (dnf -y install python3)
-      changed_when: false
-      when: ansible_os_family == "RedHat"
-      tags: 
-        - bootstrap
-        - python
 
   roles:
     - role: common
