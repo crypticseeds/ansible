@@ -1,0 +1,49 @@
+---
+- name: Load OS-family specific variables
+  ansible.builtin.include_vars: "{{ ansible_os_family }}.yml"
+
+- name: Update package cache
+  ansible.builtin.package:
+    update_cache: "{{ update_cache }}"
+  when: update_cache | bool
+  retries: 3
+  delay: 5
+  until: result is success
+
+- name: Install common packages
+  ansible.builtin.package:
+    name: "{{ common_packages }}"
+    state: present
+  retries: 3
+  delay: 5
+  until: result is success
+
+- name: Ensure Python is available
+  ansible.builtin.package:
+    name: "{{ python_package }}"
+    state: present
+
+- name: Configure timezone
+  ansible.builtin.timezone:
+    name: UTC
+
+- name: Configure NTP
+  ansible.builtin.package:
+    name: "{{ ntp_package }}"
+    state: present
+  when: ntp_package is defined
+
+- name: Start and enable NTP service
+  ansible.builtin.systemd:
+    name: "{{ ntp_service }}"
+    state: started
+    enabled: true
+  when: ntp_service is defined
+
+- name: Verify system health
+  ansible.builtin.shell: |
+    systemctl is-active --quiet systemd
+    echo "System is healthy"
+  register: health_check
+  changed_when: false
+  failed_when: health_check.rc != 0

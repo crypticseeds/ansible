@@ -1,0 +1,91 @@
+---
+- name: Initial server setup and Ansible user creation
+  hosts: all
+  gather_facts: false
+  become: false
+  
+  pre_tasks:
+    - name: Scan SSH host keys and add to known_hosts
+      ansible.builtin.shell: ssh-keyscan -H {{ ansible_host }} >> ~/.ssh/known_hosts
+      changed_when: false
+      delegate_to: localhost
+      
+    - name: Ensure SSH key exists locally
+      ansible.builtin.stat:
+        path: ~/.ssh/ansible_key
+      register: ssh_key_file
+      delegate_to: localhost
+      
+    - name: Generate SSH key if it doesn't exist
+      ansible.builtin.shell: ssh-keygen -t ed25519 -f ~/.ssh/ansible_key -N "" -C "rhel-control"
+      args:
+        creates: ~/.ssh/ansible_key
+      delegate_to: localhost
+      when: not ssh_key_file.stat.exists
+
+  tasks:
+    - name: Display current connection user
+      ansible.builtin.debug:
+        msg: "Connecting as user: {{ ansible_user }}"
+      
+    - name: Copy SSH public key to target server
+      ansible.builtin.authorized_key:
+        user: "{{ ansible_user }}"
+        state: present
+        key: "{{ lookup('file', '~/.ssh/ansible_key.pub') }}"
+      become: true
+      become_user: "{{ ansible_user }}"
+      
+    - name: Create ansible user
+      ansible.builtin.user:
+        name: ansible
+        shell: /bin/bash
+        create_home: true
+        state: present
+      become: true
+      
+    - name: Create .ssh directory for ansible user
+      ansible.builtin.file:
+        path: /home/ansible/.ssh
+        state: directory
+        owner: ansible
+        group: ansible
+        mode: '0700'
+      become: true
+      
+    - name: Copy SSH public key to ansible user
+      ansible.builtin.authorized_key:
+        user: ansible
+        state: present
+        key: "{{ lookup('file', '~/.ssh/ansible_key.pub') }}"
+      become: true
+      
+    - name: Add ansible user to sudo group
+      ansible.builtin.user:
+        name: ansible
+        groups: sudo
+        append: true
+      become: true
+      
+    - name: Configure sudo access for ansible user
+      ansible.builtin.lineinfile:
+        path: /etc/sudoers.d/ansible
+        line: "ansible ALL=(ALL) NOPASSWD:ALL"
+        state: present
+        create: true
+        mode: '0440'
+        validate: 'visudo -cf %s'
+      become: true
+      
+    - name: Ensure Python is available
+      ansible.builtin.raw: test -e /usr/bin/python3 || (apt-get update && apt-get install -y python3)
+      changed_when: false
+      become: true
+      
+    - name: Display setup completion message
+      ansible.builtin.debug:
+        msg: |
+          Server setup completed for {{ inventory_hostname }}
+          Connected as: {{ ansible_user }}
+          Ansible user 'ansible' created with sudo access
+          SSH key configured for Ansible access

@@ -1,0 +1,14 @@
+common_packages:
+  - vim
+  - curl
+  - wget
+  - unzip
+  - git
+  - gpg
+  - jq
+  - tmux
+  - dnf-automatic
+  - unattended-upgrades
+
+ntp_package: chrony
+ntp_service: chronyd

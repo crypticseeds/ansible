@@ -1,0 +1,14 @@
+common_packages:
+  - vim
+  - curl
+  - wget
+  - unzip
+  - git
+  - gpg
+  - jq
+  - tmux
+  - snapd
+  - unattended-upgrades
+
+ntp_package: ntp
+ntp_service: ntp

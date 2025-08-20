@@ -1,0 +1,16 @@
+# Global variables for dev environment
+ansible_user: ansible
+ansible_become: true
+ansible_become_method: sudo
+
+# List of possible initial users to try for bootstrap
+possible_initial_users:
+  - femi
+  - ubuntu
+  - root
+
+# Environment-specific settings
+environment: dev
+enable_debug: true
+backup_retention_days: 7
+log_rotation: daily

@@ -1,0 +1,4 @@
+# Ubuntu-specific variables
+package_manager: apt
+update_cache: true
+python_package: python3
