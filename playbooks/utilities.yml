@@ -20,23 +20,27 @@
         name: fzf
         state: present
 
-    # Zoxide installation
+    # Zoxide installation - using rust-tools repository
     - name: Add rust-tools GPG key
-      apt_key:
-        url: https://apt.cli.rs/pubkey.asc
-        state: present
+      shell: |
+        curl -fsSL https://apt.cli.rs/pubkey.asc | tee -a /usr/share/keyrings/rust-tools.asc
+      args:
+        creates: /usr/share/keyrings/rust-tools.asc
 
     - name: Add rust-tools repository
-      apt_repository:
-        repo: "deb [signed-by=/usr/share/keyrings/rust-tools.asc] https://apt.cli.rs/rust-tools.list /"
-        state: present
-        filename: rust-tools
+      shell: |
+        curl -fsSL https://apt.cli.rs/rust-tools.list | tee /etc/apt/sources.list.d/rust-tools.list
+      args:
+        creates: /etc/apt/sources.list.d/rust-tools.list
+
+    - name: Update apt cache for rust-tools
+      apt:
+        update_cache: yes
 
     - name: Install zoxide
       apt:
         name: zoxide
         state: present
-        update_cache: yes
 
     # Bat installation
     - name: Install bat
@@ -44,24 +48,11 @@
         name: bat
         state: present
 
-    - name: Create ~/.local/bin directory
-      file:
-        path: "{{ ansible_env.HOME }}/.local/bin"
-        state: directory
-        mode: '0755'
-
-    - name: Create symlink for bat
-      file:
-        src: /usr/bin/batcat
-        dest: "{{ ansible_env.HOME }}/.local/bin/bat"
-        state: link
-
     # btop installation
     - name: Install btop via snap
       snap:
         name: btop
         state: present
-        classic: yes
 
     # duf installation
     - name: Install duf
@@ -96,23 +87,20 @@
         creates: /etc/apt/keyrings/gierens.gpg
 
     - name: Add eza repository
-      apt_repository:
-        repo: "deb [signed-by=/etc/apt/keyrings/gierens.gpg] http://deb.gierens.de stable main"
-        state: present
-        filename: gierens
+      shell: |
+        echo "deb [signed-by=/etc/apt/keyrings/gierens.gpg] http://deb.gierens.de stable main" | tee /etc/apt/sources.list.d/gierens.list
+        chmod 644 /etc/apt/sources.list.d/gierens.list
+      args:
+        creates: /etc/apt/sources.list.d/gierens.list
+
+    - name: Update apt cache for eza
+      apt:
+        update_cache: yes
 
     - name: Install eza
       apt:
         name: eza
         state: present
-        update_cache: yes
-
-    # Clone eza repository for completions
-    - name: Clone eza repository
-      git:
-        repo: https://github.com/eza-community/eza.git
-        dest: "{{ ansible_env.HOME }}/eza"
-        force: yes
 
 - name: Configure user environment
   hosts: all
@@ -122,6 +110,24 @@
       file:
         path: "{{ ansible_env.HOME }}/.bashrc"
         state: touch
+
+    - name: Ensure .local/bin directory exists
+      file:
+        path: "{{ ansible_env.HOME }}/.local/bin"
+        state: directory
+        mode: '0755'
+
+    - name: Create symlink for bat
+      file:
+        src: /usr/bin/batcat
+        dest: "{{ ansible_env.HOME }}/.local/bin/bat"
+        state: link
+
+    - name: Add ~/.local/bin to PATH if not already present
+      lineinfile:
+        path: "{{ ansible_env.HOME }}/.bashrc"
+        line: 'export PATH="$HOME/.local/bin:$PATH"'
+        state: present
 
     - name: Add fzf bash integration
       lineinfile:
@@ -141,18 +147,17 @@
         line: 'alias bat="batcat"'
         state: present
 
-    - name: Add eza completions to FPATH
+    - name: Clone eza repository for completions
+      git:
+        repo: https://github.com/eza-community/eza.git
+        dest: "{{ ansible_env.HOME }}/eza"
+        force: yes
+
+    - name: Add eza completions to bashrc
       lineinfile:
         path: "{{ ansible_env.HOME }}/.bashrc"
         line: 'export FPATH="{{ ansible_env.HOME }}/eza/completions/zsh:$FPATH"'
         state: present
-
-    - name: Add ~/.local/bin to PATH if not already present
-      lineinfile:
-        path: "{{ ansible_env.HOME }}/.bashrc"
-        line: 'export PATH="$HOME/.local/bin:$PATH"'
-        state: present
-        insertafter: '^#'
 
     - name: Create bash-completion directory
       file:
@@ -165,19 +170,12 @@
       args:
         creates: "{{ ansible_env.HOME }}/.local/share/bash-completion/completions/bat"
 
-    - name: Create .fzf directory
-      file:
-        path: "{{ ansible_env.HOME }}/.fzf/shell"
-        state: directory
-        mode: '0755'
+    - name: Add fzf default options
+      lineinfile:
+        path: "{{ ansible_env.HOME }}/.bashrc"
+        line: "export FZF_DEFAULT_OPTS=\"--style default --preview 'fzf-preview.sh {}' --bind 'focus:transform-header:file --brief {}'\""
+        state: present
 
-    - name: Create fzf configuration
-      copy:
-        dest: "{{ ansible_env.HOME }}/.fzf/shell/completion.bash"
-        content: |
-          # fzf bash completion
-          _fzf_complete_fzf() {
-            _fzf_complete --style default \
-              --preview 'fzf-preview.sh {}' --bind 'focus:transform-header:file --brief {}' "$@"
-          }
-        mode: '0644'
+    - name: Source bashrc reminder
+      debug:
+        msg: "Remember to run 'source ~/.bashrc' to apply all changes"

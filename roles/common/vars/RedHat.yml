@@ -9,5 +9,6 @@ common_packages:
   - gpg
   - jq
   - tmux
+  - stow
   - dnf-automatic
   - unattended-upgrades

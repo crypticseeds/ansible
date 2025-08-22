@@ -10,6 +10,5 @@ common_packages:
   - jq
   - tmux
   - snapd
+  - stow
   - unattended-upgrades
-
-# systemd-timesyncd is included with systemd and enabled by default, no configuration needed

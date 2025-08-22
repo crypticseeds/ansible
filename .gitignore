@@ -24,3 +24,7 @@ Thumbs.db
 *.temp
 
 .cursor/*
+.kiro/*
+
+.ruff_cache/*
+
